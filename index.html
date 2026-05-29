@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guess The Flag</title>
+  <meta name="description" content="Test your world geography skills! Guess flags, identify countries, name capitals and more." />
+  <meta property="og:title" content="Guess The Flag" />
+  <meta property="og:image" content="assets/images/app_logo.png" />
+  <link rel="icon" type="image/png" href="assets/images/app_logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background-color: #0A1628;
+      color: #fff;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        radial-gradient(1px 1px at 12% 18%, rgba(255,255,255,.55) 0%, transparent 100%),
+        radial-gradient(1px 1px at 28% 72%, rgba(255,255,255,.35) 0%, transparent 100%),
+        radial-gradient(2px 2px at 42% 35%, rgba(255,255,255,.25) 0%, transparent 100%),
+        radial-gradient(1px 1px at 58% 88%, rgba(255,255,255,.45) 0%, transparent 100%),
+        radial-gradient(1px 1px at 67% 15%, rgba(255,255,255,.40) 0%, transparent 100%),
+        radial-gradient(2px 2px at 75% 55%, rgba(255,255,255,.20) 0%, transparent 100%),
+        radial-gradient(1px 1px at 88% 30%, rgba(255,255,255,.50) 0%, transparent 100%),
+        radial-gradient(1px 1px at 06% 50%, rgba(255,255,255,.40) 0%, transparent 100%),
+        radial-gradient(1px 1px at 34% 92%, rgba(255,255,255,.25) 0%, transparent 100%),
+        radial-gradient(1px 1px at 83% 05%, rgba(255,255,255,.50) 0%, transparent 100%);
+      pointer-events: none; z-index: 0;
+    }
+    body::after {
+      content: '';
+      position: absolute; top: -160px; left: 50%;
+      transform: translateX(-50%);
+      width: 700px; height: 700px;
+      background: radial-gradient(ellipse at center, rgba(255,184,0,.12) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ── LANG SELECTOR ── */
+    .lang-selector {
+      position: fixed; top: 14px; right: 14px;
+      z-index: 200;
+    }
+    [dir="rtl"] .lang-selector { right: auto; left: 14px; }
+
+    .lang-trigger {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 13px;
+      background: rgba(15,27,45,.92);
+      border: 1.5px solid rgba(36,56,85,.9);
+      border-radius: 12px;
+      color: #CBD9EA;
+      font-size: .82rem; font-weight: 600;
+      cursor: pointer;
+      backdrop-filter: blur(14px);
+      font-family: inherit;
+      transition: border-color .15s;
+      user-select: none;
+    }
+    .lang-trigger:hover { border-color: rgba(255,184,0,.4); }
+    .lang-arrow { font-size: .6rem; opacity: .5; transition: transform .2s; display: inline-block; }
+    .lang-selector.open .lang-arrow { transform: rotate(180deg); }
+
+    .lang-menu {
+      position: absolute; top: calc(100% + 6px); right: 0;
+      background: rgba(10,22,40,.97);
+      border: 1.5px solid rgba(36,56,85,.9);
+      border-radius: 14px;
+      overflow: hidden;
+      width: 196px;
+      max-height: 0;
+      opacity: 0;
+      pointer-events: none;
+      transition: max-height .28s ease, opacity .2s ease;
+      backdrop-filter: blur(18px);
+      box-shadow: 0 20px 60px rgba(0,0,0,.65);
+    }
+    [dir="rtl"] .lang-menu { right: auto; left: 0; }
+    .lang-selector.open .lang-menu {
+      max-height: 480px;
+      opacity: 1;
+      pointer-events: auto;
+      overflow-y: auto;
+    }
+    .lang-menu::-webkit-scrollbar { width: 4px; }
+    .lang-menu::-webkit-scrollbar-track { background: transparent; }
+    .lang-menu::-webkit-scrollbar-thumb { background: #243855; border-radius: 2px; }
+
+    .lang-opt {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-size: .84rem; color: #8BA4C0;
+      transition: background .1s, color .1s;
+    }
+    .lang-opt:hover { background: rgba(36,56,85,.7); color: #fff; }
+    .lang-opt.active { color: #FFB800; background: rgba(255,184,0,.07); }
+    .lang-opt-flag { font-size: 1.15rem; line-height: 1; }
+
+    /* ── HERO ── */
+    .hero {
+      position: relative; z-index: 1;
+      display: flex; flex-direction: column;
+      align-items: center; text-align: center;
+      padding: 72px 24px 72px;
+      overflow: hidden;
+    }
+    .hero-flag {
+      position: absolute; width: 80px;
+      border-radius: 8px;
+      box-shadow: 0 6px 24px rgba(0,0,0,.5);
+      opacity: 0;
+      animation: flagFloat 4s ease-in-out infinite, flagFadeIn .8s ease forwards;
+    }
+    .hero-flag:nth-child(1){top:10%;left:3%;  transform:rotate(-14deg);animation-delay:0s,  .1s}
+    .hero-flag:nth-child(2){top:55%;left:0%;  transform:rotate(10deg); animation-delay:.7s, .3s}
+    .hero-flag:nth-child(3){top:78%;left:8%;  transform:rotate(-8deg); animation-delay:1.4s,.5s}
+    .hero-flag:nth-child(4){top:8%; right:4%; transform:rotate(16deg); animation-delay:.3s, .2s}
+    .hero-flag:nth-child(5){top:48%;right:1%; transform:rotate(-12deg);animation-delay:1.1s,.4s}
+    .hero-flag:nth-child(6){top:75%;right:7%; transform:rotate(7deg);  animation-delay:.6s, .6s}
+    @keyframes flagFloat{0%,100%{margin-top:0}50%{margin-top:-8px}}
+    @keyframes flagFadeIn{to{opacity:.22}}
+
+    .logo {
+      width: 148px; height: 148px;
+      border-radius: 34px; object-fit: cover;
+      box-shadow: 0 0 0 1px rgba(255,184,0,.25), 0 24px 80px rgba(0,0,0,.6), 0 0 60px rgba(255,184,0,.25);
+      animation: float 3.5s ease-in-out infinite;
+      margin-bottom: 32px;
+      position: relative; z-index: 1;
+    }
+    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+
+    .hero h1 {
+      font-size: clamp(2.6rem, 9vw, 4.2rem);
+      font-weight: 900; letter-spacing: -0.03em;
+      line-height: 1.1; padding-bottom: .15em;
+      margin-bottom: 14px;
+      background: linear-gradient(140deg, #FFE566 10%, #FFB800 55%, #FF9200 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; display: inline-block;
+      position: relative; z-index: 1;
+    }
+    .hero p {
+      font-size: 1.1rem; line-height: 1.65;
+      color: #8BA4C0; max-width: 420px;
+      margin-bottom: 44px;
+      position: relative; z-index: 1;
+    }
+
+    /* ── STORE BUTTONS ── */
+    .store-buttons {
+      display: flex; gap: 14px;
+      flex-wrap: wrap; justify-content: center;
+      position: relative; z-index: 1;
+    }
+    .btn-store {
+      display: inline-flex; align-items: center;
+      gap: 11px; padding: 13px 22px;
+      border-radius: 16px; text-decoration: none;
+      font-weight: 700;
+      transition: transform .15s, box-shadow .15s, background .15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-store:hover  { transform: translateY(-4px); box-shadow: 0 16px 48px rgba(0,0,0,.45); }
+    .btn-store:active { transform: translateY(0); }
+    .btn-apple {
+      background: #141e2e; color: #4E6480;
+      border: 1.5px solid #1e2e44;
+      pointer-events: none; position: relative; overflow: hidden;
+    }
+    .btn-apple .btn-icon { opacity: .45; }
+    .btn-coming-badge {
+      position: absolute; top: 6px; right: 8px;
+      font-size: .58rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .06em;
+      color: #FFB800; background: rgba(255,184,0,.12);
+      border: 1px solid rgba(255,184,0,.25);
+      border-radius: 4px; padding: 1px 5px; line-height: 1.5;
+    }
+    .btn-gplay { background: #0e2a1a; color: #fff; border: 1.5px solid #1a4028; }
+    .btn-gplay:hover { background: #133322; border-color: #256640; }
+    .btn-icon { width: 26px; height: 26px; flex-shrink: 0; }
+    .btn-text { display: flex; flex-direction: column; align-items: flex-start; }
+    .btn-label { font-size: .67rem; font-weight: 500; opacity: .65; letter-spacing: .07em; text-transform: uppercase; }
+    .btn-name  { font-size: .97rem; font-weight: 800; line-height: 1.15; }
+
+    /* ── MARQUEE ── */
+    .flag-marquee {
+      position: relative; z-index: 1;
+      width: 100%; overflow: hidden;
+      padding: 12px 0 20px;
+      mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+    }
+    .flag-track { display: flex; gap: 14px; width: max-content; animation: marquee 30s linear infinite; }
+    .flag-track img { width: 64px; height: 42px; border-radius: 7px; object-fit: cover; border: 1px solid rgba(255,255,255,.1); box-shadow: 0 3px 12px rgba(0,0,0,.4); flex-shrink: 0; }
+    @keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+    /* ── STATS ── */
+    .stats { position: relative; z-index: 1; max-width: 680px; margin: 0 auto; padding: 32px 24px 80px; display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
+    .stat { background: rgba(26,43,69,.75); border: 1.5px solid rgba(36,56,85,.9); border-radius: 20px; padding: 24px 12px; text-align: center; backdrop-filter: blur(10px); }
+    .stat-num { font-size: clamp(1.7rem,4vw,2.2rem); font-weight: 900; line-height: 1; margin-bottom: 7px; background: linear-gradient(135deg,#FFE566,#FFB800); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; display: inline-block; padding-bottom: .05em; }
+    .stat-lbl { font-size: .8rem; color: #8BA4C0; font-weight: 500; }
+
+    /* ── SHARED SECTION ── */
+    .section { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 0 24px 88px; }
+    .section-tag { text-align: center; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: #FFB800; margin-bottom: 10px; }
+    .section-title { text-align: center; font-size: clamp(1.7rem,4.5vw,2.3rem); font-weight: 900; letter-spacing: -0.025em; color: #fff; margin-bottom: 12px; }
+    .section-sub { text-align: center; color: #8BA4C0; font-size: .95rem; max-width: 460px; margin: 0 auto 44px; line-height: 1.6; }
+
+    /* ── DIVIDER ── */
+    .divider { position: relative; z-index: 1; height: 1px; max-width: 860px; margin: 0 auto 72px; background: linear-gradient(to right, transparent, rgba(255,184,0,.25), transparent); }
+
+    /* ── MODES ── */
+    .modes-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 18px; margin-top: 36px; }
+    .mode-card:last-child:nth-child(odd) { grid-column: 1 / -1; justify-self: center; width: calc(50% - 9px); }
+    .mode-card { background: rgba(26,43,69,.8); border: 1.5px solid rgba(36,56,85,.9); border-radius: 24px; overflow: hidden; transition: transform .2s, border-color .2s, box-shadow .2s; backdrop-filter: blur(10px); }
+    .mode-card:hover { transform: translateY(-7px); border-color: rgba(255,184,0,.35); box-shadow: 0 24px 64px rgba(0,0,0,.45), 0 0 48px rgba(255,184,0,.09); }
+    .mode-card img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; }
+    .mode-card-body { padding: 18px 20px 20px; }
+    .mode-card-title { font-size: 1rem; font-weight: 800; color: #fff; margin-bottom: 5px; }
+    .mode-card-desc  { font-size: .875rem; color: #8BA4C0; line-height: 1.5; }
+
+    /* ── CONTINENTS ── */
+    .continents-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
+    .continent-card { background: rgba(26,43,69,.8); border: 1.5px solid rgba(36,56,85,.9); border-radius: 20px; padding: 20px 16px 16px; text-align: center; backdrop-filter: blur(10px); transition: transform .2s, border-color .2s, box-shadow .2s; }
+    .continent-card:hover { transform: translateY(-5px); }
+    .continent-card[data-continent="africa"]:hover    { border-color:rgba(255,149,0,.4);  box-shadow:0 16px 40px rgba(0,0,0,.4),0 0 30px rgba(255,149,0,.12); }
+    .continent-card[data-continent="americas"]:hover  { border-color:rgba(88,204,2,.4);   box-shadow:0 16px 40px rgba(0,0,0,.4),0 0 30px rgba(88,204,2,.12); }
+    .continent-card[data-continent="asia"]:hover      { border-color:rgba(255,75,75,.4);  box-shadow:0 16px 40px rgba(0,0,0,.4),0 0 30px rgba(255,75,75,.12); }
+    .continent-card[data-continent="europe"]:hover    { border-color:rgba(28,176,246,.4); box-shadow:0 16px 40px rgba(0,0,0,.4),0 0 30px rgba(28,176,246,.12); }
+    .continent-card[data-continent="oceania"]:hover   { border-color:rgba(0,191,165,.4);  box-shadow:0 16px 40px rgba(0,0,0,.4),0 0 30px rgba(0,191,165,.12); }
+    .continent-card[data-continent="antarctic"]:hover { border-color:rgba(176,200,224,.4);box-shadow:0 16px 40px rgba(0,0,0,.4),0 0 30px rgba(176,200,224,.12); }
+    .continent-svg-wrap { width: 100%; height: 90px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; }
+    .continent-svg { width: 100%; height: 100%; display: block; overflow: visible; transition: color .2s; }
+    .continent-card[data-continent="africa"]    .continent-svg { color: rgba(255,149,0,.55); }
+    .continent-card[data-continent="americas"]  .continent-svg { color: rgba(88,204,2,.55); }
+    .continent-card[data-continent="asia"]      .continent-svg { color: rgba(255,75,75,.55); }
+    .continent-card[data-continent="europe"]    .continent-svg { color: rgba(28,176,246,.55); }
+    .continent-card[data-continent="oceania"]   .continent-svg { color: rgba(0,191,165,.55); }
+    .continent-card[data-continent="antarctic"] .continent-svg { color: rgba(176,200,224,.55); }
+    .continent-card:hover .continent-svg { filter: drop-shadow(0 0 8px currentColor); }
+    .continent-label { font-size: .85rem; font-weight: 700; color: #8BA4C0; }
+    .continent-svg-wrap.loading::after { content: ''; display: block; width: 60%; height: 60%; background: rgba(36,56,85,.8); border-radius: 8px; animation: pulse 1.4s ease-in-out infinite; }
+    @keyframes pulse{0%,100%{opacity:.6}50%{opacity:.25}}
+
+    /* ── FLASH CARDS ── */
+    .fc-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
+    .fc-card { background: rgba(26,43,69,.8); border: 1.5px solid rgba(36,56,85,.9); border-radius: 20px; padding: 24px 18px 20px; text-align: center; backdrop-filter: blur(10px); transition: transform .2s; }
+    .fc-card:hover { transform: translateY(-5px); }
+    .fc-card.learned  { border-top: 3px solid #58CC02; }
+    .fc-card.progress { border-top: 3px solid #FFB800; }
+    .fc-card.review   { border-top: 3px solid #FF4B4B; }
+    .fc-icon  { font-size: 2rem; margin-bottom: 12px; display: block; }
+    .fc-title { font-size: .95rem; font-weight: 800; color: #fff; margin-bottom: 6px; }
+    .fc-card.learned  .fc-title { color: #58CC02; }
+    .fc-card.progress .fc-title { color: #FFB800; }
+    .fc-card.review   .fc-title { color: #FF4B4B; }
+    .fc-desc { font-size: .8rem; color: #8BA4C0; line-height: 1.5; }
+
+    /* ── ACHIEVEMENTS ── */
+    .platforms { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-bottom: 40px; }
+    .platform-badge { display: flex; align-items: center; gap: 9px; padding: 10px 20px; background: rgba(26,43,69,.8); border: 1.5px solid rgba(36,56,85,.9); border-radius: 14px; backdrop-filter: blur(10px); }
+    .platform-badge img { width: 22px; height: 22px; object-fit: contain; }
+    .platform-name { font-size: .9rem; font-weight: 700; color: #CBD9EA; }
+    .ach-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 12px; }
+    .ach-item { display: flex; align-items: flex-start; gap: 14px; background: rgba(26,43,69,.7); border: 1.5px solid rgba(36,56,85,.8); border-radius: 16px; padding: 16px; backdrop-filter: blur(8px); transition: border-color .2s, transform .2s; }
+    .ach-item:hover { border-color: rgba(255,184,0,.3); transform: translateY(-3px); }
+    .ach-trophy { font-size: 1.6rem; flex-shrink: 0; line-height: 1; }
+    .ach-info { flex: 1; }
+    .ach-name { font-size: .88rem; font-weight: 800; color: #fff; margin-bottom: 3px; }
+    .ach-desc { font-size: .78rem; color: #8BA4C0; line-height: 1.4; }
+    .ach-count { text-align: center; margin-top: 28px; font-size: .85rem; color: #4E6480; }
+    .ach-count span { color: #FFB800; font-weight: 700; }
+
+    /* ── CTA ── */
+    .cta { position: relative; z-index: 1; text-align: center; padding: 0 24px 88px; }
+    .cta h2 { font-size: clamp(1.6rem,4vw,2.1rem); font-weight: 900; letter-spacing: -0.025em; margin-bottom: 10px; }
+    .cta p  { color: #8BA4C0; margin-bottom: 36px; font-size: 1rem; }
+
+    /* ── FOOTER ── */
+    footer { position: relative; z-index: 1; text-align: center; padding: 22px 24px; color: #3E5570; font-size: .78rem; border-top: 1px solid rgba(36,56,85,.6); }
+
+    /* ── REVEAL ── */
+    .reveal { opacity: 0; transform: translateY(28px); transition: opacity .65s ease, transform .65s ease; }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+
+    /* ── RESPONSIVE ── */
+    @media(max-width:640px){
+      .modes-grid{grid-template-columns:1fr}
+      .mode-card:last-child:nth-child(odd){width:100%}
+      .continents-grid{grid-template-columns:repeat(2,1fr)}
+      .fc-grid{grid-template-columns:1fr}
+      .ach-grid{grid-template-columns:1fr}
+    }
+    @media(max-width:480px){
+      .hero{padding:52px 20px 56px}
+      .logo{width:116px;height:116px}
+      .store-buttons{flex-direction:column;align-items:center}
+      .btn-store{width:218px}
+      .stats{gap:10px}
+      .stat{padding:18px 8px}
+      .hero-flag{width:56px}
+      .lang-selector{top:10px;right:10px}
+      [dir="rtl"] .lang-selector{right:auto;left:10px}
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Language Selector (built by JS) -->
+  <div class="lang-selector" id="langSelector">
+    <button class="lang-trigger" id="langTrigger" aria-haspopup="listbox" aria-expanded="false">
+      <span id="langCurrentFlag"></span>
+      <span id="langCurrentName"></span>
+      <span class="lang-arrow">▾</span>
+    </button>
+    <div class="lang-menu" id="langMenu" role="listbox"></div>
+  </div>
+
+  <!-- HERO -->
+  <section class="hero">
+    <img src="assets/flags/jp.svg" class="hero-flag" alt="" aria-hidden="true" />
+    <img src="assets/flags/br.svg" class="hero-flag" alt="" aria-hidden="true" />
+    <img src="assets/flags/fr.svg" class="hero-flag" alt="" aria-hidden="true" />
+    <img src="assets/flags/de.svg" class="hero-flag" alt="" aria-hidden="true" />
+    <img src="assets/flags/ca.svg" class="hero-flag" alt="" aria-hidden="true" />
+    <img src="assets/flags/au.svg" class="hero-flag" alt="" aria-hidden="true" />
+    <img src="assets/images/app_logo.png" alt="Guess The Flag" class="logo" />
+    <h1>Guess The Flag</h1>
+    <p data-i18n="hero.sub"></p>
+    <div class="store-buttons">
+      <div class="btn-store btn-apple">
+        <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zm-5.02-13.03c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
+        <span class="btn-text">
+          <span class="btn-label" data-i18n="apple.label"></span>
+          <span class="btn-name">App Store</span>
+        </span>
+        <span class="btn-coming-badge" data-i18n="coming.soon"></span>
+      </div>
+      <a href="https://play.google.com/store/apps/details?id=com.wispy.guess_the_flag" target="_blank" rel="noopener" class="btn-store btn-gplay">
+        <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28.99 31.99">
+          <path fill="#4285F4" d="M.12 2.66a3.57 3.57 0 0 0-.12.92v24.84a3.57 3.57 0 0 0 .12.92L14 15.64Z"/>
+          <path fill="#34A853" d="m13.64 16 6.94-6.85L5.5.51A3.73 3.73 0 0 0 3.63 0 3.64 3.64 0 0 0 .12 2.65Z"/>
+          <path fill="#FBBC04" d="m27.11 12.89-6.53-3.74-7.35 6.45 7.38 7.28 6.48-3.7a3.54 3.54 0 0 0 1.5-4.79 3.62 3.62 0 0 0-1.5-1.5z"/>
+          <path fill="#EA4335" d="M13.54 15.28.12 29.34a3.66 3.66 0 0 0 5.33 2.16l15.1-8.6Z"/>
+        </svg>
+        <span class="btn-text">
+          <span class="btn-label" data-i18n="gplay.label"></span>
+          <span class="btn-name">Google Play</span>
+        </span>
+      </a>
+    </div>
+  </section>
+
+  <!-- MARQUEE -->
+  <div class="flag-marquee"><div class="flag-track">
+    <img src="assets/flags/us.svg" alt="USA" /><img src="assets/flags/gb.svg" alt="UK" />
+    <img src="assets/flags/jp.svg" alt="Japan" /><img src="assets/flags/br.svg" alt="Brazil" />
+    <img src="assets/flags/fr.svg" alt="France" /><img src="assets/flags/de.svg" alt="Germany" />
+    <img src="assets/flags/au.svg" alt="Australia" /><img src="assets/flags/ca.svg" alt="Canada" />
+    <img src="assets/flags/in.svg" alt="India" /><img src="assets/flags/cn.svg" alt="China" />
+    <img src="assets/flags/mx.svg" alt="Mexico" /><img src="assets/flags/it.svg" alt="Italy" />
+    <img src="assets/flags/es.svg" alt="Spain" /><img src="assets/flags/ru.svg" alt="Russia" />
+    <img src="assets/flags/za.svg" alt="South Africa" /><img src="assets/flags/ar.svg" alt="Argentina" />
+    <img src="assets/flags/ng.svg" alt="Nigeria" /><img src="assets/flags/kr.svg" alt="South Korea" />
+    <img src="assets/flags/tr.svg" alt="Turkey" /><img src="assets/flags/se.svg" alt="Sweden" />
+    <img src="assets/flags/us.svg" aria-hidden="true"/><img src="assets/flags/gb.svg" aria-hidden="true"/>
+    <img src="assets/flags/jp.svg" aria-hidden="true"/><img src="assets/flags/br.svg" aria-hidden="true"/>
+    <img src="assets/flags/fr.svg" aria-hidden="true"/><img src="assets/flags/de.svg" aria-hidden="true"/>
+    <img src="assets/flags/au.svg" aria-hidden="true"/><img src="assets/flags/ca.svg" aria-hidden="true"/>
+    <img src="assets/flags/in.svg" aria-hidden="true"/><img src="assets/flags/cn.svg" aria-hidden="true"/>
+    <img src="assets/flags/mx.svg" aria-hidden="true"/><img src="assets/flags/it.svg" aria-hidden="true"/>
+    <img src="assets/flags/es.svg" aria-hidden="true"/><img src="assets/flags/ru.svg" aria-hidden="true"/>
+    <img src="assets/flags/za.svg" aria-hidden="true"/><img src="assets/flags/ar.svg" aria-hidden="true"/>
+    <img src="assets/flags/ng.svg" aria-hidden="true"/><img src="assets/flags/kr.svg" aria-hidden="true"/>
+    <img src="assets/flags/tr.svg" aria-hidden="true"/><img src="assets/flags/se.svg" aria-hidden="true"/>
+  </div></div>
+
+  <!-- STATS -->
+  <div class="stats reveal">
+    <div class="stat"><div class="stat-num">250</div><div class="stat-lbl" data-i18n="stat.flags"></div></div>
+    <div class="stat"><div class="stat-num">5</div><div class="stat-lbl" data-i18n="stat.modes"></div></div>
+    <div class="stat"><div class="stat-num">6</div><div class="stat-lbl" data-i18n="stat.continents"></div></div>
+  </div>
+
+  <div class="divider reveal"></div>
+
+  <!-- GAME MODES -->
+  <section class="section reveal">
+    <p class="section-tag" data-i18n="modes.tag"></p>
+    <h2 class="section-title" data-i18n="modes.title"></h2>
+    <div class="modes-grid">
+      <div class="mode-card"><img src="assets/images/guess_flag.png" alt="" loading="lazy" /><div class="mode-card-body"><div class="mode-card-title" data-i18n="mode1.title"></div><div class="mode-card-desc" data-i18n="mode1.desc"></div></div></div>
+      <div class="mode-card"><img src="assets/images/guess_country.png" alt="" loading="lazy" /><div class="mode-card-body"><div class="mode-card-title" data-i18n="mode2.title"></div><div class="mode-card-desc" data-i18n="mode2.desc"></div></div></div>
+      <div class="mode-card"><img src="assets/images/guess_capital.png" alt="" loading="lazy" /><div class="mode-card-body"><div class="mode-card-title" data-i18n="mode3.title"></div><div class="mode-card-desc" data-i18n="mode3.desc"></div></div></div>
+      <div class="mode-card"><img src="assets/images/guess_form.png" alt="" loading="lazy" /><div class="mode-card-body"><div class="mode-card-title" data-i18n="mode4.title"></div><div class="mode-card-desc" data-i18n="mode4.desc"></div></div></div>
+      <div class="mode-card"><img src="assets/images/guess_memory.png" alt="" loading="lazy" /><div class="mode-card-body"><div class="mode-card-title" data-i18n="mode5.title"></div><div class="mode-card-desc" data-i18n="mode5.desc"></div></div></div>
+    </div>
+  </section>
+
+  <div class="divider reveal"></div>
+
+  <!-- CONTINENTS -->
+  <section class="section reveal" id="continents-section">
+    <p class="section-tag" data-i18n="continents.tag"></p>
+    <h2 class="section-title" data-i18n="continents.title"></h2>
+    <p class="section-sub" data-i18n="continents.sub"></p>
+    <div class="continents-grid">
+      <div class="continent-card" data-continent="africa"><div class="continent-svg-wrap loading" id="svg-wrap-africa"><svg class="continent-svg" id="svg-africa" xmlns="http://www.w3.org/2000/svg"></svg></div><div class="continent-label" data-i18n="cont.africa"></div></div>
+      <div class="continent-card" data-continent="americas"><div class="continent-svg-wrap loading" id="svg-wrap-americas"><svg class="continent-svg" id="svg-americas" xmlns="http://www.w3.org/2000/svg"></svg></div><div class="continent-label" data-i18n="cont.americas"></div></div>
+      <div class="continent-card" data-continent="asia"><div class="continent-svg-wrap loading" id="svg-wrap-asia"><svg class="continent-svg" id="svg-asia" xmlns="http://www.w3.org/2000/svg"></svg></div><div class="continent-label" data-i18n="cont.asia"></div></div>
+      <div class="continent-card" data-continent="europe"><div class="continent-svg-wrap loading" id="svg-wrap-europe"><svg class="continent-svg" id="svg-europe" xmlns="http://www.w3.org/2000/svg"></svg></div><div class="continent-label" data-i18n="cont.europe"></div></div>
+      <div class="continent-card" data-continent="oceania"><div class="continent-svg-wrap loading" id="svg-wrap-oceania"><svg class="continent-svg" id="svg-oceania" xmlns="http://www.w3.org/2000/svg"></svg></div><div class="continent-label" data-i18n="cont.oceania"></div></div>
+      <div class="continent-card" data-continent="antarctic"><div class="continent-svg-wrap loading" id="svg-wrap-antarctic"><svg class="continent-svg" id="svg-antarctic" xmlns="http://www.w3.org/2000/svg"></svg></div><div class="continent-label" data-i18n="cont.antarctic"></div></div>
+    </div>
+  </section>
+
+  <div class="divider reveal"></div>
+
+  <!-- FLASH CARDS -->
+  <section class="section reveal">
+    <p class="section-tag" data-i18n="cards.tag"></p>
+    <h2 class="section-title" data-i18n="cards.title"></h2>
+    <p class="section-sub" data-i18n="cards.sub"></p>
+    <div class="fc-grid">
+      <div class="fc-card learned"><span class="fc-icon">&#x2705;</span><div class="fc-title" data-i18n="card1.title"></div><div class="fc-desc" data-i18n="card1.desc"></div></div>
+      <div class="fc-card progress"><span class="fc-icon">&#x26A1;</span><div class="fc-title" data-i18n="card2.title"></div><div class="fc-desc" data-i18n="card2.desc"></div></div>
+      <div class="fc-card review"><span class="fc-icon">&#x1F504;</span><div class="fc-title" data-i18n="card3.title"></div><div class="fc-desc" data-i18n="card3.desc"></div></div>
+    </div>
+  </section>
+
+  <div class="divider reveal"></div>
+
+  <!-- ACHIEVEMENTS -->
+  <section class="section reveal">
+    <p class="section-tag" data-i18n="ach.tag"></p>
+    <h2 class="section-title" data-i18n="ach.title"></h2>
+    <p class="section-sub" data-i18n="ach.sub"></p>
+    <div class="platforms">
+      <div class="platform-badge"><img src="assets/icons/google_play_games.svg" alt="Google Play Games" /><span class="platform-name">Google Play Games</span></div>
+      <div class="platform-badge"><img src="assets/icons/game_center.svg" alt="Game Center" /><span class="platform-name">Game Center</span></div>
+    </div>
+    <div class="ach-grid">
+      <div class="ach-item"><span class="ach-trophy">&#x1F3C6;</span><div class="ach-info"><div class="ach-name">Welcome Aboard</div><div class="ach-desc" data-i18n="ach.a1"></div></div></div>
+      <div class="ach-item"><span class="ach-trophy">&#x1F947;</span><div class="ach-info"><div class="ach-name">Flag Collector</div><div class="ach-desc" data-i18n="ach.a2"></div></div></div>
+      <div class="ach-item"><span class="ach-trophy">&#x1F525;</span><div class="ach-info"><div class="ach-name">On a Roll</div><div class="ach-desc" data-i18n="ach.a3"></div></div></div>
+      <div class="ach-item"><span class="ach-trophy">&#x1F30D;</span><div class="ach-info"><div class="ach-name">Master: Africa</div><div class="ach-desc" data-i18n="ach.a4"></div></div></div>
+      <div class="ach-item"><span class="ach-trophy">&#x2B50;</span><div class="ach-info"><div class="ach-name">Rising Geographer</div><div class="ach-desc" data-i18n="ach.a5"></div></div></div>
+      <div class="ach-item"><span class="ach-trophy">&#x1F4C5;</span><div class="ach-info"><div class="ach-name">Daily Goal</div><div class="ach-desc" data-i18n="ach.a6"></div></div></div>
+    </div>
+    <p class="ach-count" data-i18n="ach.more"></p>
+  </section>
+
+  <div class="divider reveal"></div>
+
+  <!-- CTA -->
+  <section class="cta reveal">
+    <h2 data-i18n="cta.title"></h2>
+    <p data-i18n="cta.sub"></p>
+    <div class="store-buttons">
+      <div class="btn-store btn-apple">
+        <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zm-5.02-13.03c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
+        <span class="btn-text"><span class="btn-label" data-i18n="apple.label"></span><span class="btn-name">App Store</span></span>
+        <span class="btn-coming-badge" data-i18n="coming.soon"></span>
+      </div>
+      <a href="https://play.google.com/store/apps/details?id=com.wispy.guess_the_flag" target="_blank" rel="noopener" class="btn-store btn-gplay">
+        <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28.99 31.99"><path fill="#4285F4" d="M.12 2.66a3.57 3.57 0 0 0-.12.92v24.84a3.57 3.57 0 0 0 .12.92L14 15.64Z"/><path fill="#34A853" d="m13.64 16 6.94-6.85L5.5.51A3.73 3.73 0 0 0 3.63 0 3.64 3.64 0 0 0 .12 2.65Z"/><path fill="#FBBC04" d="m27.11 12.89-6.53-3.74-7.35 6.45 7.38 7.28 6.48-3.7a3.54 3.54 0 0 0 1.5-4.79 3.62 3.62 0 0 0-1.5-1.5z"/><path fill="#EA4335" d="M13.54 15.28.12 29.34a3.66 3.66 0 0 0 5.33 2.16l15.1-8.6Z"/></svg>
+        <span class="btn-text"><span class="btn-label" data-i18n="gplay.label"></span><span class="btn-name">Google Play</span></span>
+      </a>
+    </div>
+  </section>
+
+  <footer><span data-i18n="footer"></span></footer>
+
+  <script src="i18n.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
